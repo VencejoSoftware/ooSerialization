@@ -134,7 +134,6 @@ begin
   Result := StringReplace(Result, '\r', #13, [rfReplaceAll]);
   Result := StringReplace(Result, '\n', #10, [rfReplaceAll]);
   Result := StringReplace(Result, '\"', '"', [rfReplaceAll]);
-  Result := StringReplace(Result, '\/', '/', [rfReplaceAll]);
 end;
 
 function TJSONText.Compose(const JSONText: String): String;
@@ -147,7 +146,6 @@ begin
   Result := StringReplace(Result, #13, '\r', [rfReplaceAll]);
   Result := StringReplace(Result, #10, '\n', [rfReplaceAll]);
   Result := StringReplace(Result, '"', '\"', [rfReplaceAll]);
-  Result := StringReplace(Result, '/', '\/', [rfReplaceAll]);
 end;
 
 class function TJSONText.New: IJSONText;
