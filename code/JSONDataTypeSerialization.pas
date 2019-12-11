@@ -16,7 +16,8 @@ interface
 
 uses
   SysUtils,
-  Serialization;
+  Serialization,
+  JSONSerialization;
 
 type
 {$REGION 'documentation'}
@@ -24,7 +25,7 @@ type
   @abstract(JSON text data type serialization interface)
 }
 {$ENDREGION}
-  IJSONText = interface(IItemSerialize<String>)
+  IJSONText = interface(IItemSerialize<WideString>)
     ['{F47F2BB4-6406-4822-9031-4F42F9E71FCE}']
   end;
 
@@ -32,24 +33,36 @@ type
 {
   @abstract(Implementation of @link(IJSONText))
   @member(
-    Decompose Converts strig data type to JSON string
-    @param(Text String value)
-    @return(JSON representation string)
+    Decompose Converts strig data type to JSON WideString
+    @param(Text WideString value)
+    @return(JSON representation WideString)
   )
   @member(
-    Compose Converts JSON text data type to string
-    @param(JSONText JSON string)
-    @return(String data type)
+    Compose Converts JSON text data type to WideString
+    @param(JSONText JSON WideString)
+    @return(WideString data type)
   )
-  @member(New Create a new @classname as interface)
+  @member(
+    Create Object contructor
+    @param(AddQuotes Add quotes to value)
+    @param(EmptyAsNull If is an empty date then return null)
+  )
+  @member(
+    New Create a new @classname as interface
+    @param(AddQuotes Add quotes to value)
+    @param(EmptyAsNull If is an empty date then return null)
+  )
 }
 {$ENDREGION}
 
   TJSONText = class sealed(TInterfacedObject, IJSONText)
+  strict private
+    _AddQuotes, _EmptyAsNull: Boolean;
   public
-    function Decompose(const Text: String): String;
-    function Compose(const JSONText: String): String;
-    class function New: IJSONText;
+    function Decompose(const Text: WideString): WideString;
+    function Compose(const JSONText: WideString): WideString;
+    constructor Create(const AddQuotes, EmptyAsNull: Boolean);
+    class function New(const AddQuotes, EmptyAsNull: Boolean): IJSONText;
   end;
 
 {$REGION 'documentation'}
@@ -68,11 +81,11 @@ type
   @member(
     Decompose Converts boolean data type to JSON boolean represntation
     @param(Bool Boolean value)
-    @return(String with data type decomposed)
+    @return(WideString with data type decomposed)
   )
   @member(
-    Compose Converts JSON boolean string to string data type
-    @param(JSONBoolean Transportable string)
+    Compose Converts JSON boolean WideString to WideString data type
+    @param(JSONBoolean Transportable WideString)
     @return(Boolean data type)
   )
   @member(New Create a new @classname as interface)
@@ -81,8 +94,8 @@ type
 
   TJSONBoolean = class sealed(TInterfacedObject, IJSONBoolean)
   public
-    function Decompose(const Bool: Boolean): String;
-    function Compose(const JSONBoolean: String): Boolean;
+    function Decompose(const Bool: Boolean): WideString;
+    function Compose(const JSONBoolean: WideString): Boolean;
     class function New: IJSONBoolean;
   end;
 
@@ -100,31 +113,43 @@ type
 {
   @abstract(Implementation of @link(IJSONDateTime))
   @member(
-    Decompose Converts date/time data type to JSON ISO8601 string
+    Decompose Converts date/time data type to JSON ISO8601 WideString
     @param(DateTime date/time value)
-    @return(String with JSON data type decomposed)
+    @return(WideString with JSON data type decomposed)
   )
   @member(
-    Compose Converts transportable string to JSON date/time data type
-    @param(JSONDateTime JSON ISO8601 string)
+    Compose Converts transportable WideString to JSON date/time data type
+    @param(JSONDateTime JSON ISO8601 WideString)
     @return(Date/time data type)
   )
-  @member(New Create a new @classname as interface)
+  @member(
+    Create Object contructor
+    @param(AddQuotes Add quotes to value)
+    @param(EmptyAsNull If is an empty date then return null)
+  )
+  @member(
+    New Create a new @classname as interface
+    @param(AddQuotes Add quotes to value)
+    @param(EmptyAsNull If is an empty date then return null)
+  )
 }
 {$ENDREGION}
 
   TJSONDateTimeISO8601 = class sealed(TInterfacedObject, IJSONDateTime)
+  strict private
+    _AddQuotes, _EmptyAsNull: Boolean;
   public
-    function Decompose(const DateTime: TDateTime): String;
-    function Compose(const JSONDateTime: String): TDateTime;
-    class function New: IJSONDateTime;
+    function Decompose(const DateTime: TDateTime): WideString;
+    function Compose(const JSONDateTime: WideString): TDateTime;
+    constructor Create(const AddQuotes, EmptyAsNull: Boolean);
+    class function New(const AddQuotes, EmptyAsNull: Boolean): IJSONDateTime;
   end;
 
 implementation
 
 { TJSONText }
 
-function TJSONText.Decompose(const Text: String): String;
+function TJSONText.Decompose(const Text: WideString): WideString;
 begin
   Result := Text;
   Result := StringReplace(Result, '\\', '\', [rfReplaceAll]);
@@ -137,9 +162,11 @@ begin
   Result := StringReplace(Result, '\/', '/', [rfReplaceAll]);
 end;
 
-function TJSONText.Compose(const JSONText: String): String;
+function TJSONText.Compose(const JSONText: WideString): WideString;
 begin
   Result := JSONText;
+  if (Length(Trim(Result)) < 1) and _EmptyAsNull then
+    Exit(NULL_RESULT);
   Result := StringReplace(Result, '\', '\\', [rfReplaceAll]);
   Result := StringReplace(Result, #8, '\b', [rfReplaceAll]);
   Result := StringReplace(Result, #9, '\t', [rfReplaceAll]);
@@ -148,23 +175,31 @@ begin
   Result := StringReplace(Result, #10, '\n', [rfReplaceAll]);
   Result := StringReplace(Result, '"', '\"', [rfReplaceAll]);
   Result := StringReplace(Result, '/', '\/', [rfReplaceAll]);
+  if _AddQuotes then
+    Result := '"' + Result + '"';
 end;
 
-class function TJSONText.New: IJSONText;
+constructor TJSONText.Create(const AddQuotes, EmptyAsNull: Boolean);
 begin
-  Result := TJSONText.Create;
+  _AddQuotes := AddQuotes;
+  _EmptyAsNull := EmptyAsNull;
+end;
+
+class function TJSONText.New(const AddQuotes, EmptyAsNull: Boolean): IJSONText;
+begin
+  Result := TJSONText.Create(AddQuotes, EmptyAsNull);
 end;
 
 { TJSONBoolean }
 
-function TJSONBoolean.Decompose(const Bool: Boolean): String;
+function TJSONBoolean.Decompose(const Bool: Boolean): WideString;
 const
-  BOOLEAN_TEXT: array [Boolean] of string = ('false', 'true');
+  BOOLEAN_TEXT: array [Boolean] of WideString = ('false', 'true');
 begin
   Result := BOOLEAN_TEXT[Bool];
 end;
 
-function TJSONBoolean.Compose(const JSONBoolean: String): Boolean;
+function TJSONBoolean.Compose(const JSONBoolean: WideString): Boolean;
 begin
   Result := SameText('true', JSONBoolean);
 end;
@@ -176,12 +211,16 @@ end;
 
 { TJSONDateTimeISO8601 }
 
-function TJSONDateTimeISO8601.Decompose(const DateTime: TDateTime): String;
+function TJSONDateTimeISO8601.Decompose(const DateTime: TDateTime): WideString;
 begin
+  if (DateTime = 0) and _EmptyAsNull then
+    Exit(NULL_RESULT);
   Result := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz"Z"', DateTime);
+  if _AddQuotes then
+    Result := '"' + Result + '"';
 end;
 
-function TJSONDateTimeISO8601.Compose(const JSONDateTime: String): TDateTime;
+function TJSONDateTimeISO8601.Compose(const JSONDateTime: WideString): TDateTime;
 var
   Year, Month, Day, Hour, Minute, Second, MSecond: Word;
 begin
@@ -195,9 +234,15 @@ begin
   Result := EncodeDate(Year, Month, Day) + EncodeTime(Hour, Minute, Second, MSecond);
 end;
 
-class function TJSONDateTimeISO8601.New: IJSONDateTime;
+constructor TJSONDateTimeISO8601.Create(const AddQuotes, EmptyAsNull: Boolean);
 begin
-  Result := TJSONDateTimeISO8601.Create;
+  _AddQuotes := AddQuotes;
+  _EmptyAsNull := EmptyAsNull;
+end;
+
+class function TJSONDateTimeISO8601.New(const AddQuotes, EmptyAsNull: Boolean): IJSONDateTime;
+begin
+  Result := TJSONDateTimeISO8601.Create(AddQuotes, EmptyAsNull);
 end;
 
 end.

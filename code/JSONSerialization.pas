@@ -25,16 +25,20 @@ uses
   IterableList,
   Serialization;
 
+const
+  NULL_RESULT = 'null';
+  EMPTY_OBJECT = '{}';
+
 type
 {$REGION 'documentation'}
 {
   @abstract(Implementation of @link(IItemSerialize) for single item JSON serialization)
   @member(
-    Decompose Checks if generic item is NULL to return empty string or call the specific item implementation
+    Decompose Checks if generic item is NULL to return empty WideString or call the specific item implementation
     @seealso(IItemSerialize.Decompose)
   )
   @member(
-    Compose Checks if text is empty to return empty string or call the specific item implementation
+    Compose Checks if text is empty to return empty WideString or call the specific item implementation
     @seealso(IItemSerialize.Compose)
   )
   @member(
@@ -50,11 +54,12 @@ type
   TJSONItemSerialize<T> = class(TInterfacedObject, IItemSerialize<T>)
   strict private
     _ItemSerialize: IItemSerialize<T>;
+    _NullValue: WideString;
   public
-    function Decompose(const Item: T): String;
-    function Compose(const Text: String): T;
-    constructor Create(const ItemSerialize: IItemSerialize<T>);
-    class function New(const ItemSerialize: IItemSerialize<T>): IItemSerialize<T>;
+    function Decompose(const Item: T): WideString;
+    function Compose(const Text: WideString): T;
+    constructor Create(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString);
+    class function New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString): IItemSerialize<T>;
   end;
 
 {$REGION 'documentation'}
@@ -83,8 +88,8 @@ type
   strict private
     _ItemSerialize: IItemSerialize<T>;
   public
-    function Decompose(const List: IIterableList<T>): String;
-    function Compose(const Text: String; const List: IIterableList<T>): Boolean;
+    function Decompose(const List: IIterableList<T>): WideString;
+    function Compose(const Text: WideString; const List: IIterableList<T>): Boolean;
     constructor Create(const ItemSerialize: IItemSerialize<T>);
     class function New(const ItemSerialize: IItemSerialize<T>): IListSerialize<T>;
   end;
@@ -110,27 +115,27 @@ type
     _ItemSerialize: IItemSerialize<T>;
     _ListSerialize: IListSerialize<T>;
   public
-    function Serialize(const Item: T): String;
-    function Deserialize(const Text: String): T;
-    function ListSerialize(const List: IIterableList<T>): String;
-    function ListDeserialize(const Text: String; const List: IIterableList<T>): Boolean;
-    constructor Create(const ItemSerialize: IItemSerialize<T>);
-    class function New(const ItemSerialize: IItemSerialize<T>): ISerialization<T>;
+    function Serialize(const Item: T): WideString;
+    function Deserialize(const Text: WideString): T;
+    function ListSerialize(const List: IIterableList<T>): WideString;
+    function ListDeserialize(const Text: WideString; const List: IIterableList<T>): Boolean;
+    constructor Create(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString);
+    class function New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString): ISerialization<T>;
   end;
 
 implementation
 
 { TJSONItemSerialize<T> }
 
-function TJSONItemSerialize<T>.Decompose(const Item: T): String;
+function TJSONItemSerialize<T>.Decompose(const Item: T): WideString;
 begin
   if TValue.From<T>(Item).IsEmpty then
-    Result := '{}'
+    Result := _NullValue
   else
     Result := _ItemSerialize.Decompose(Item);
 end;
 
-function TJSONItemSerialize<T>.Compose(const Text: String): T;
+function TJSONItemSerialize<T>.Compose(const Text: WideString): T;
 begin
   if Length(Trim(Text)) < 1 then
     Result := Default (T)
@@ -138,19 +143,21 @@ begin
     Result := _ItemSerialize.Compose(Text);
 end;
 
-constructor TJSONItemSerialize<T>.Create(const ItemSerialize: IItemSerialize<T>);
+constructor TJSONItemSerialize<T>.Create(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString);
 begin
   _ItemSerialize := ItemSerialize;
+  _NullValue := NullValue;
 end;
 
-class function TJSONItemSerialize<T>.New(const ItemSerialize: IItemSerialize<T>): IItemSerialize<T>;
+class function TJSONItemSerialize<T>.New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString)
+  : IItemSerialize<T>;
 begin
-  Result := TJSONItemSerialize<T>.Create(ItemSerialize);
+  Result := TJSONItemSerialize<T>.Create(ItemSerialize, NullValue);
 end;
 
 { TJSONListSerialize<T> }
 
-function TJSONListSerialize<T>.Decompose(const List: IIterableList<T>): String;
+function TJSONListSerialize<T>.Decompose(const List: IIterableList<T>): WideString;
 var
   Item: T;
 begin
@@ -162,7 +169,7 @@ begin
   Result := '[' + Result + ']';
 end;
 
-function TJSONListSerialize<T>.Compose(const Text: String; const List: IIterableList<T>): Boolean;
+function TJSONListSerialize<T>.Compose(const Text: WideString; const List: IIterableList<T>): Boolean;
 var
   JSonValue: TJSonValue;
   JsonArray: TJSONArray;
@@ -193,35 +200,36 @@ end;
 
 { TJSONSerialization<T> }
 
-function TJSONSerialization<T>.Serialize(const Item: T): String;
+function TJSONSerialization<T>.Serialize(const Item: T): WideString;
 begin
   Result := _ItemSerialize.Decompose(Item);
 end;
 
-function TJSONSerialization<T>.Deserialize(const Text: String): T;
+function TJSONSerialization<T>.Deserialize(const Text: WideString): T;
 begin
   Result := _ItemSerialize.Compose(Text);
 end;
 
-function TJSONSerialization<T>.ListSerialize(const List: IIterableList<T>): String;
+function TJSONSerialization<T>.ListSerialize(const List: IIterableList<T>): WideString;
 begin
   Result := _ListSerialize.Decompose(List);
 end;
 
-function TJSONSerialization<T>.ListDeserialize(const Text: String; const List: IIterableList<T>): Boolean;
+function TJSONSerialization<T>.ListDeserialize(const Text: WideString; const List: IIterableList<T>): Boolean;
 begin
   Result := _ListSerialize.Compose(Text, List);
 end;
 
-constructor TJSONSerialization<T>.Create(const ItemSerialize: IItemSerialize<T>);
+constructor TJSONSerialization<T>.Create(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString);
 begin
-  _ItemSerialize := TJSONItemSerialize<T>.New(ItemSerialize);
+  _ItemSerialize := TJSONItemSerialize<T>.New(ItemSerialize, NullValue);
   _ListSerialize := TJSONListSerialize<T>.New(_ItemSerialize);
 end;
 
-class function TJSONSerialization<T>.New(const ItemSerialize: IItemSerialize<T>): ISerialization<T>;
+class function TJSONSerialization<T>.New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString)
+  : ISerialization<T>;
 begin
-  Result := TJSONSerialization<T>.Create(ItemSerialize);
+  Result := TJSONSerialization<T>.Create(ItemSerialize, NullValue);
 end;
 
 end.

@@ -35,21 +35,21 @@ type
 {$ENDREGION}
   IItemSerialize<T> = interface
     ['{7049511F-9979-4731-89FA-45581293CFC8}']
-    function Decompose(const Item: T): String;
-    function Compose(const Text: String): T;
+    function Decompose(const Item: T): WideString;
+    function Compose(const Text: WideString): T;
   end;
 
 {$REGION 'documentation'}
 {
   @abstract(Generic interface for object list serialization)
   @member(
-    Decompose Converts objects list to transportable string
+    Decompose Converts objects list to transportable WideString
     @param(Item Generic objects list)
-    @return(String with objects list decomposed)
+    @return(WideString with objects list decomposed)
   )
   @member(
-    Compose Converts transportable string to objects list
-    @param(Text Transportable string)
+    Compose Converts transportable WideString to objects list
+    @param(Text Transportable WideString)
     @param(List objects list to populate)
     @return(@true if list is populated, @false if not)
   )
@@ -58,31 +58,31 @@ type
 
   IListSerialize<T> = interface
     ['{12C3E341-2FC5-4171-A389-32E4AC70BDA5}']
-    function Decompose(const List: IIterableList<T>): String;
-    function Compose(const Text: String; const List: IIterableList<T>): Boolean;
+    function Decompose(const List: IIterableList<T>): WideString;
+    function Compose(const Text: WideString; const List: IIterableList<T>): Boolean;
   end;
 
 {$REGION 'documentation'}
 {
   @abstract(Generic interface for objects serialization)
   @member(
-    Serialize Converts generic item to transportable string implementing an @link(item serialization factory IItemSerialize<T>)
+    Serialize Converts generic item to transportable WideString implementing an @link(item serialization factory IItemSerialize<T>)
     @param(Item Generic item)
-    @return(String with generic item decomposed)
+    @return(WideString with generic item decomposed)
   )
   @member(
-    Deserialize Converts transportable string to generic item implementing an @link(item serialization factory IItemSerialize<T>)
-    @param(Value Transportable string)
+    Deserialize Converts transportable WideString to generic item implementing an @link(item serialization factory IItemSerialize<T>)
+    @param(Value Transportable WideString)
     @return(Builded object)
   )
   @member(
-    ListSerialize Converts objects list to transportable string implementing an @link(item list serialization factory IListSerialize<T>)
+    ListSerialize Converts objects list to transportable WideString implementing an @link(item list serialization factory IListSerialize<T>)
     @param(Item Generic objects list)
-    @return(String with objects list decomposed)
+    @return(WideString with objects list decomposed)
   )
   @member(
-    ListDeserialize Converts transportable string to objects list
-    @param(Text Transportable string)
+    ListDeserialize Converts transportable WideString to objects list
+    @param(Text Transportable WideString)
     @param(List objects list to populate)
     @return(@true if list is populated, @false if not)
   )
@@ -91,10 +91,10 @@ type
 
   ISerialization<T> = interface
     ['{8B09F10B-7C1D-4FAA-B9E9-19A56E9C8E41}']
-    function Serialize(const Item: T): String;
-    function Deserialize(const Text: String): T;
-    function ListSerialize(const List: IIterableList<T>): String;
-    function ListDeserialize(const Text: String; const List: IIterableList<T>): Boolean;
+    function Serialize(const Item: T): WideString;
+    function Deserialize(const Text: WideString): T;
+    function ListSerialize(const List: IIterableList<T>): WideString;
+    function ListDeserialize(const Text: WideString; const List: IIterableList<T>): Boolean;
   end;
 
 implementation
