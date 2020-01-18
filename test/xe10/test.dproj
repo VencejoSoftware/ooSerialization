@@ -82,15 +82,14 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="..\..\code\JSONDataTypeSerialization.pas"/>
         <DCCReference Include="..\..\code\JSONSerialization.pas"/>
         <DCCReference Include="..\..\code\Serialization.pas"/>
-        <DCCReference Include="..\..\code\TextSerialization.pas"/>
-        <DCCReference Include="..\..\code\XMLSerialization.pas"/>
-        <DCCReference Include="..\..\code\JSONDataTypeSerialization.pas"/>
-        <DCCReference Include="..\code\JSONDataTypeSerialization_test.pas"/>
         <DCCReference Include="..\..\code\XMLDataTypeSerialization.pas"/>
-        <DCCReference Include="..\code\XMLDataTypeSerialization_test.pas"/>
+        <DCCReference Include="..\..\code\XMLSerialization.pas"/>
+        <DCCReference Include="..\code\JSONDataTypeSerialization_test.pas"/>
         <DCCReference Include="..\code\JSONSerialization_test.pas"/>
+        <DCCReference Include="..\code\XMLDataTypeSerialization_test.pas"/>
         <DCCReference Include="..\code\entity\TestObject.pas"/>
         <DCCReference Include="..\code\entity\serialization\TestObjectJSON.pas"/>
         <BuildConfiguration Include="Debug">

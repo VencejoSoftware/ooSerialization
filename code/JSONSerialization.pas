@@ -1,11 +1,11 @@
 {$REGION 'documentation'}
 {
-  Copyright (c) 2019, Vencejo Software
+  Copyright (c) 2020, Vencejo Software
   Distributed under the terms of the Modified BSD License
   The full license is distributed with this software
 }
 {
-  JSON objects serialization
+  JSON format serialization
   @created(20/06/2019)
   @author Vencejo Software <www.vencejosoft.com>
 }
@@ -15,7 +15,7 @@ unit JSONSerialization;
 interface
 
 uses
-  SysUtils, StrUtils,
+  Classes, SysUtils, StrUtils,
 {$IFDEF FPC}
 // TODO:
 {$ELSE}
@@ -23,6 +23,7 @@ uses
   JSON,
 {$ENDIF}
   IterableList,
+  PlainStream,
   Serialization;
 
 const
@@ -59,7 +60,8 @@ type
     function Decompose(const Item: T): WideString;
     function Compose(const Text: WideString): T;
     constructor Create(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString);
-    class function New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString): IItemSerialize<T>;
+    class function New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString = NULL_RESULT)
+      : IItemSerialize<T>;
   end;
 
 {$REGION 'documentation'}
@@ -115,12 +117,15 @@ type
     _ItemSerialize: IItemSerialize<T>;
     _ListSerialize: IListSerialize<T>;
   public
-    function Serialize(const Item: T): WideString;
-    function Deserialize(const Text: WideString): T;
-    function ListSerialize(const List: IIterableList<T>): WideString;
-    function ListDeserialize(const Text: WideString; const List: IIterableList<T>): Boolean;
+    function Decompose(const Item: T): WideString;
+    function Compose(const Text: WideString): T;
+    function ComposeFromStream(const Stream: TStream): T;
+    function ListDecompose(const List: IIterableList<T>): WideString;
+    function ListCompose(const Text: WideString; const List: IIterableList<T>): Boolean;
+    function ListComposeFromStream(const Stream: TStream; const List: IIterableList<T>): Boolean;
     constructor Create(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString);
-    class function New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString): ISerialization<T>;
+    class function New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString = NULL_RESULT)
+      : ISerialization<T>;
   end;
 
 implementation
@@ -137,7 +142,7 @@ end;
 
 function TJSONItemSerialize<T>.Compose(const Text: WideString): T;
 begin
-  if Length(Trim(Text)) < 1 then
+  if (Length(Trim(Text)) < 1) or (Text = EMPTY_OBJECT) then
     Result := Default (T)
   else
     Result := _ItemSerialize.Compose(Text);
@@ -200,24 +205,34 @@ end;
 
 { TJSONSerialization<T> }
 
-function TJSONSerialization<T>.Serialize(const Item: T): WideString;
+function TJSONSerialization<T>.Decompose(const Item: T): WideString;
 begin
   Result := _ItemSerialize.Decompose(Item);
 end;
 
-function TJSONSerialization<T>.Deserialize(const Text: WideString): T;
+function TJSONSerialization<T>.Compose(const Text: WideString): T;
 begin
   Result := _ItemSerialize.Compose(Text);
 end;
 
-function TJSONSerialization<T>.ListSerialize(const List: IIterableList<T>): WideString;
+function TJSONSerialization<T>.ComposeFromStream(const Stream: TStream): T;
+begin
+  Result := Compose(TPlainStream.New.Decode(Stream));
+end;
+
+function TJSONSerialization<T>.ListDecompose(const List: IIterableList<T>): WideString;
 begin
   Result := _ListSerialize.Decompose(List);
 end;
 
-function TJSONSerialization<T>.ListDeserialize(const Text: WideString; const List: IIterableList<T>): Boolean;
+function TJSONSerialization<T>.ListCompose(const Text: WideString; const List: IIterableList<T>): Boolean;
 begin
   Result := _ListSerialize.Compose(Text, List);
+end;
+
+function TJSONSerialization<T>.ListComposeFromStream(const Stream: TStream; const List: IIterableList<T>): Boolean;
+begin
+  Result := ListCompose(TPlainStream.New.Decode(Stream), List);
 end;
 
 constructor TJSONSerialization<T>.Create(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString);
