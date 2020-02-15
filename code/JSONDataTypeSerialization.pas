@@ -1,6 +1,6 @@
 {$REGION 'documentation'}
 {
-  Copyright (c) 2019, Vencejo Software
+  Copyright (c) 2020, Vencejo Software
   Distributed under the terms of the Modified BSD License
   The full license is distributed with this software
 }
@@ -34,13 +34,13 @@ type
   @abstract(Implementation of @link(IJSONText))
   @member(
     Decompose Converts strig data type to JSON WideString
-    @param(Text WideString value)
-    @return(JSON representation WideString)
+    @param(JSONText WideString value)
+    @return(WideString data type)
   )
   @member(
     Compose Converts JSON text data type to WideString
-    @param(JSONText JSON WideString)
-    @return(WideString data type)
+    @param(Text JSON WideString)
+    @return(JSON representation WideString)
   )
   @member(
     Create Object contructor
@@ -59,10 +59,10 @@ type
   strict private
     _AddQuotes, _EmptyAsNull: Boolean;
   public
-    function Decompose(const Text: WideString): WideString;
-    function Compose(const JSONText: WideString): WideString;
+    function Decompose(const JSONText: WideString): WideString;
+    function Compose(const Text: WideString): WideString;
     constructor Create(const AddQuotes, EmptyAsNull: Boolean);
-    class function New(const AddQuotes, EmptyAsNull: Boolean): IJSONText;
+    class function New(const AddQuotes: Boolean = False; const EmptyAsNull: Boolean = True): IJSONText;
   end;
 
 {$REGION 'documentation'}
@@ -142,16 +142,16 @@ type
     function Decompose(const DateTime: TDateTime): WideString;
     function Compose(const JSONDateTime: WideString): TDateTime;
     constructor Create(const AddQuotes, EmptyAsNull: Boolean);
-    class function New(const AddQuotes, EmptyAsNull: Boolean): IJSONDateTime;
+    class function New(const AddQuotes: Boolean = False; const EmptyAsNull: Boolean = True): IJSONDateTime;
   end;
 
 implementation
 
 { TJSONText }
 
-function TJSONText.Decompose(const Text: WideString): WideString;
+function TJSONText.Decompose(const JSONText: WideString): WideString;
 begin
-  Result := Text;
+  Result := JSONText;
   Result := StringReplace(Result, '\\', '\', [rfReplaceAll]);
   Result := StringReplace(Result, '\b', #8, [rfReplaceAll]);
   Result := StringReplace(Result, '\t', #9, [rfReplaceAll]);
@@ -162,9 +162,9 @@ begin
   Result := StringReplace(Result, '\/', '/', [rfReplaceAll]);
 end;
 
-function TJSONText.Compose(const JSONText: WideString): WideString;
+function TJSONText.Compose(const Text: WideString): WideString;
 begin
-  Result := JSONText;
+  Result := Text;
   if (Length(Trim(Result)) < 1) and _EmptyAsNull then
     Exit(NULL_RESULT);
   Result := StringReplace(Result, '\', '\\', [rfReplaceAll]);
@@ -175,6 +175,7 @@ begin
   Result := StringReplace(Result, #10, '\n', [rfReplaceAll]);
   Result := StringReplace(Result, '"', '\"', [rfReplaceAll]);
   Result := StringReplace(Result, '/', '\/', [rfReplaceAll]);
+  Result := StringReplace(Result, '''', '''', [rfReplaceAll]);
   if _AddQuotes then
     Result := '"' + Result + '"';
 end;

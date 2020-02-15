@@ -1,5 +1,5 @@
 {
-  Copyright (c) 2019, Vencejo Software
+  Copyright (c) 2020, Vencejo Software
   Distributed under the terms of the Modified BSD License
   The full license is distributed with this software
 }
@@ -20,8 +20,8 @@ type
     _JSONDateTime: IJSONDateTime;
     _JSONBoolean: IJSONBoolean;
   public
-    function Decompose(const Item: ITestObject): String;
-    function Compose(const Text: String): ITestObject;
+    function Decompose(const Item: ITestObject): WideString;
+    function Compose(const Text: WideString): ITestObject;
     constructor Create;
     class function New: IItemSerialize<ITestObject>;
   end;
@@ -37,7 +37,7 @@ type
 
 implementation
 
-function TTestObjectJSONItem.Decompose(const Item: ITestObject): String;
+function TTestObjectJSONItem.Decompose(const Item: ITestObject): WideString;
 const
   ITEM_TEMPLATE = '{"id":%d,"name":"%s","dateTime":"%s","enabled":"%s"}';
 begin
@@ -45,7 +45,7 @@ begin
     _JSONBoolean.Decompose(Item.Enabled)]);
 end;
 
-function TTestObjectJSONItem.Compose(const Text: String): ITestObject;
+function TTestObjectJSONItem.Compose(const Text: WideString): ITestObject;
 var
   JSonValue: TJSonValue;
   DateTime: TDateTime;
@@ -53,9 +53,10 @@ var
 begin
   JSonValue := TJSonObject.ParseJSONValue(TEncoding.UTF8.GetBytes(Text), 0);
   try
-    DateTime := _JSONDateTime.Compose(JSonValue.GetValue<string>('dateTime'));
-    Enabled := _JSONBoolean.Compose(JSonValue.GetValue<string>('enabled'));
-    Result := TTestObject.New(JSonValue.GetValue<integer>('id'), JSonValue.GetValue<string>('name'), DateTime, Enabled);
+    DateTime := _JSONDateTime.Compose(JSonValue.GetValue<WideString>('dateTime'));
+    Enabled := _JSONBoolean.Compose(JSonValue.GetValue<WideString>('enabled'));
+    Result := TTestObject.New(JSonValue.GetValue<integer>('id'), JSonValue.GetValue<WideString>('name'),
+      DateTime, Enabled);
   finally
     JSonValue.Free;
   end;
@@ -77,7 +78,7 @@ end;
 
 class function TTestObjectJSON.New: ITestObjectSerialization;
 begin
-  Result := TTestObjectJSON.Create(TTestObjectJSONItem.New);
+  Result := TTestObjectJSON.Create(TTestObjectJSONItem.New, NULL_RESULT);
 end;
 
 end.

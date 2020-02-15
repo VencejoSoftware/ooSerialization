@@ -1,11 +1,11 @@
 {$REGION 'documentation'}
 {
-  Copyright (c) 2019, Vencejo Software
+  Copyright (c) 2020, Vencejo Software
   Distributed under the terms of the Modified BSD License
   The full license is distributed with this software
 }
 {
-  JSON objects serialization
+  JSON format serialization
   @created(20/06/2019)
   @author Vencejo Software <www.vencejosoft.com>
 }
@@ -15,7 +15,7 @@ unit JSONSerialization;
 interface
 
 uses
-  SysUtils, StrUtils,
+  Classes, SysUtils, StrUtils,
 {$IFDEF FPC}
 // TODO:
 {$ELSE}
@@ -23,6 +23,7 @@ uses
   JSON,
 {$ENDIF}
   IterableList,
+  PlainStream,
   Serialization;
 
 const
@@ -59,8 +60,17 @@ type
     function Decompose(const Item: T): WideString;
     function Compose(const Text: WideString): T;
     constructor Create(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString);
-    class function New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString): IItemSerialize<T>;
+    class function New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString = NULL_RESULT)
+      : IItemSerialize<T>;
   end;
+
+{$REGION 'documentation'}
+{
+  @abstract(Callback to find list node array)
+}
+{$ENDREGION}
+
+  TJSONListFindNodeCallback = reference to function(const JSON: TJSonValue): TJSONArray;
 
 {$REGION 'documentation'}
 {
@@ -76,10 +86,12 @@ type
   @member(
     Create Object constructor
     @param(ItemSerialize Specific JSON item serialization implementation)
+    @param(FindNodeCallback Callback to returns the JSONarray object to list processing)
   )
   @member(
     New Create a new @classname as interface
     @param(ItemSerialize Specific JSON item serialization implementation)
+    @param(FindNodeCallback Callback to returns the JSONarray object for list processing)
   )
 }
 {$ENDREGION}
@@ -87,11 +99,13 @@ type
   TJSONListSerialize<T> = class(TInterfacedObject, IListSerialize<T>)
   strict private
     _ItemSerialize: IItemSerialize<T>;
+    _FindNodeCallback: TJSONListFindNodeCallback;
   public
     function Decompose(const List: IIterableList<T>): WideString;
     function Compose(const Text: WideString; const List: IIterableList<T>): Boolean;
-    constructor Create(const ItemSerialize: IItemSerialize<T>);
-    class function New(const ItemSerialize: IItemSerialize<T>): IListSerialize<T>;
+    constructor Create(const ItemSerialize: IItemSerialize<T>; const FindNodeCallback: TJSONListFindNodeCallback);
+    class function New(const ItemSerialize: IItemSerialize<T>; const FindNodeCallback: TJSONListFindNodeCallback)
+      : IListSerialize<T>;
   end;
 
 {$REGION 'documentation'}
@@ -99,6 +113,11 @@ type
   @abstract(Implementation of @link(ISerialization) for object JSON serialization)
   @member(@seealso(ISerialization.Decompose))
   @member(@seealso(ISerialization.Compose))
+  @member(
+    FindNodeCallback Callback to returns the JSONarray object for list processing
+    @param(JSON JSON master object)
+    @return(JSON array object)
+  )
   @member(
     Create Object constructor
     @param(ItemSerialize Specific JSON item serialization implementation)
@@ -114,13 +133,18 @@ type
   strict private
     _ItemSerialize: IItemSerialize<T>;
     _ListSerialize: IListSerialize<T>;
+  protected
+    function FindNodeCallback(const JSON: TJSonValue): TJSONArray; virtual;
   public
-    function Serialize(const Item: T): WideString;
-    function Deserialize(const Text: WideString): T;
-    function ListSerialize(const List: IIterableList<T>): WideString;
-    function ListDeserialize(const Text: WideString; const List: IIterableList<T>): Boolean;
-    constructor Create(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString);
-    class function New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString): ISerialization<T>;
+    function Decompose(const Item: T): WideString;
+    function Compose(const Text: WideString): T;
+    function ComposeFromStream(const Stream: TStream): T;
+    function ListDecompose(const List: IIterableList<T>): WideString;
+    function ListCompose(const Text: WideString; const List: IIterableList<T>): Boolean;
+    function ListComposeFromStream(const Stream: TStream; const List: IIterableList<T>): Boolean;
+    constructor Create(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString = NULL_RESULT);
+    class function New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString = NULL_RESULT)
+      : ISerialization<T>;
   end;
 
 implementation
@@ -137,7 +161,7 @@ end;
 
 function TJSONItemSerialize<T>.Compose(const Text: WideString): T;
 begin
-  if Length(Trim(Text)) < 1 then
+  if (Length(Trim(Text)) < 1) or (Text = EMPTY_OBJECT) then
     Result := Default (T)
   else
     Result := _ItemSerialize.Compose(Text);
@@ -178,8 +202,8 @@ begin
   Result := False;
   List.Clear;
   JSonValue := TJSonObject.ParseJSONValue(TEncoding.UTF8.GetBytes(Text), 0);
-  try
-    JsonArray := JSonValue as TJSONArray;
+  try;
+    JsonArray := _FindNodeCallback(JSonValue);
     for ArrayElement in JsonArray do
       List.Add(_ItemSerialize.Compose(ArrayElement.ToJSON));
     Result := not List.IsEmpty;
@@ -188,42 +212,60 @@ begin
   end;
 end;
 
-constructor TJSONListSerialize<T>.Create(const ItemSerialize: IItemSerialize<T>);
+constructor TJSONListSerialize<T>.Create(const ItemSerialize: IItemSerialize<T>;
+  const FindNodeCallback: TJSONListFindNodeCallback);
 begin
   _ItemSerialize := ItemSerialize;
+  _FindNodeCallback := FindNodeCallback;
 end;
 
-class function TJSONListSerialize<T>.New(const ItemSerialize: IItemSerialize<T>): IListSerialize<T>;
+class function TJSONListSerialize<T>.New(const ItemSerialize: IItemSerialize<T>;
+  const FindNodeCallback: TJSONListFindNodeCallback): IListSerialize<T>;
 begin
-  Result := TJSONListSerialize<T>.Create(ItemSerialize);
+  Result := TJSONListSerialize<T>.Create(ItemSerialize, FindNodeCallback);
 end;
 
 { TJSONSerialization<T> }
 
-function TJSONSerialization<T>.Serialize(const Item: T): WideString;
+function TJSONSerialization<T>.Decompose(const Item: T): WideString;
 begin
   Result := _ItemSerialize.Decompose(Item);
 end;
 
-function TJSONSerialization<T>.Deserialize(const Text: WideString): T;
+function TJSONSerialization<T>.Compose(const Text: WideString): T;
 begin
   Result := _ItemSerialize.Compose(Text);
 end;
 
-function TJSONSerialization<T>.ListSerialize(const List: IIterableList<T>): WideString;
+function TJSONSerialization<T>.ComposeFromStream(const Stream: TStream): T;
+begin
+  Result := Compose(TPlainStream.New.Decode(Stream));
+end;
+
+function TJSONSerialization<T>.ListDecompose(const List: IIterableList<T>): WideString;
 begin
   Result := _ListSerialize.Decompose(List);
 end;
 
-function TJSONSerialization<T>.ListDeserialize(const Text: WideString; const List: IIterableList<T>): Boolean;
+function TJSONSerialization<T>.ListCompose(const Text: WideString; const List: IIterableList<T>): Boolean;
 begin
   Result := _ListSerialize.Compose(Text, List);
+end;
+
+function TJSONSerialization<T>.ListComposeFromStream(const Stream: TStream; const List: IIterableList<T>): Boolean;
+begin
+  Result := ListCompose(TPlainStream.New.Decode(Stream), List);
+end;
+
+function TJSONSerialization<T>.FindNodeCallback(const JSON: TJSonValue): TJSONArray;
+begin
+  Result := JSON as TJSONArray;
 end;
 
 constructor TJSONSerialization<T>.Create(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString);
 begin
   _ItemSerialize := TJSONItemSerialize<T>.New(ItemSerialize, NullValue);
-  _ListSerialize := TJSONListSerialize<T>.New(_ItemSerialize);
+  _ListSerialize := TJSONListSerialize<T>.New(_ItemSerialize, FindNodeCallback);
 end;
 
 class function TJSONSerialization<T>.New(const ItemSerialize: IItemSerialize<T>; const NullValue: WideString)
