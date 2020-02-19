@@ -51,6 +51,8 @@ type
   strict private
     _ItemSerialize: IItemSerialize<T>;
     _ListSerialize: IListSerialize<T>;
+  protected
+    function FindNodeCallback(const XMLNode: IXMLNode): IXMLNodeList; virtual;
   public
     function Decompose(const Item: T): WideString;
     function Compose(const Text: WideString): T;
@@ -134,22 +136,30 @@ begin
   Result := _ItemSerialize.Compose(Text);
 end;
 
-function TXMLSerialization<T>.ListCompose(const Text: WideString; const List: IIterableList<T>): Boolean;
-// function TXMLSerialization<T>.ListDeserialize(const Text: WideString; const List: IIterableList<T>): Boolean;
-// var
-// XMLDoc: IXMLDocument;
-// MainNode: IXMLNode;
-// XMLArray: TXMLArray;
-// ArrayElement: TXMLValue;
+function TXMLSerialization<T>.FindNodeCallback(const XMLNode: IXMLNode): IXMLNodeList;
 begin
-// Result := False;
-// List.Clear;
-// XMLDoc := LoadXMLData(Text);
-// MainNode := XMLDoc.DocumentElement;
-// XMLArray := ListDeserializeGetArray(XMLValue);
-// for ArrayElement in XMLArray do
-// List.Add(Compose(ArrayElement.ToXML));
-// Result := List.Count > 0;
+  Result := XMLNode.ChildNodes;
+end;
+
+function TXMLSerialization<T>.ListCompose(const Text: WideString; const List: IIterableList<T>): Boolean;
+var
+  XMLDoc: IXMLDocument;
+  MainNode: IXMLNode;
+  XMLArray: IXMLNodeList;
+  ArrayElement: IXMLNode;
+  i: NativeInt;
+begin
+  Result := False;
+  List.Clear;
+  XMLDoc := LoadXMLData(Text);
+  MainNode := XMLDoc.DocumentElement;
+  XMLArray := FindNodeCallback(MainNode);
+  for i := 0 to Pred(XMLArray.Count) do
+  begin
+    ArrayElement := XMLArray[i];
+    List.Add(Compose(ArrayElement.XML));
+  end;
+  Result := List.Count > 0;
 end;
 
 function TXMLSerialization<T>.ListComposeFromStream(const Stream: TStream; const List: IIterableList<T>): Boolean;
