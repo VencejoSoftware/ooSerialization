@@ -119,6 +119,8 @@ function TXMLListSerialize<T>.Decompose(const List: IIterableList<T>): WideStrin
 var
   Item: T;
 begin
+  if List.IsEmpty then
+    Exit(EmptyWideStr);
   Result := AddTagDelimiter(_RootNodeCallback, False);
   for Item in List do
     Result := Result + _ItemSerialize.Decompose(Item);
